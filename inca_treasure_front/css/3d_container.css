@@ -1,0 +1,22 @@
+/* 3D场景容器（对接王五的Three.js） */
+#three-scene {
+  width: 800px;
+  height: 600px;
+  margin: 0 auto;
+  position: relative; /* 防止3D场景溢出 */
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 10; /* 层级：3D容器基础层，UI浮层在20+ */
+  background-color: #000; /* 临时黑色占位，王五会替换为3D场景 */
+}
+
+/* 3D容器周边UI浮层通用样式 */
+.three-d-ui-float {
+  position: absolute;
+  z-index: 20; /* 确保UI在3D上方，不遮挡核心操作 */
+  background-color: rgba(255,255,255,0.8);
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+}

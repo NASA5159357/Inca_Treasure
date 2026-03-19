@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<img src="./img/signature.png" class="page-signature">
+<img src="./img/xidian.jpg" class="page-xidian">
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>印加寻宝 - 游戏界面</title>
+  <!-- 引入所有样式 -->
+  <link rel="stylesheet" href="./css/common.css">
+  <link rel="stylesheet" href="./css/3d-container.css">
+  <link rel="stylesheet" href="./css/game.css">
+  <!-- 引入Socket.io客户端 -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- 引入Three.js（王五的3D代码依赖，CDN方式） -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+</head>
+<body>
+  <div class="game-page">
+    <!-- 顶部信息区 -->
+    <div class="game-top">
+      <div class="game-round">当前回合：<span id="current-round">1</span>/5</div>
+      <div class="game-player-info" id="player-info-container">
+        <!-- 后端返回的玩家信息会渲染到这里（张三） -->
+        <div class="player-item">
+          <div class="player-name">玩家1</div>
+          <div class="player-score">得分：0</div>
+          <div class="player-status">当前回合</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 核心游戏区（3D+操作） -->
+    <div class="game-core">
+      <!-- 3D场景容器（对接王五的Three.js） -->
+      <div id="three-scene"></div>
+
+      <!-- 操作按钮区 -->
+      <div class="game-ops">
+        <button id="flip-card" class="btn">翻牌</button>
+        <button id="continue-btn" class="btn">继续</button>
+        <button id="leave-btn" class="btn">离开</button>
+      </div>
+
+      <!-- 翻牌日志区 -->
+      <div class="game-log">
+        <div class="game-log-title">翻牌日志</div>
+        <div id="log-container" class="log-content">
+          <!-- 后端推送的翻牌日志渲染到这里 -->
+          <div class="log-item">【日志】游戏开始</div>
+        </div>
+      </div>
+    </div>
+          <!-- 聊天区 -->
+      <div class="game-chat">
+        <div class="chat-content" id="chat-content">
+          <!-- 聊天记录 -->
+        </div>
+        <div class="chat-input">
+          <input type="text" id="chat-input" placeholder="输入聊天内容">
+          <button id="send-chat" class="btn">发送</button>
+        </div>
+      </div>
+  </div>
+
+  <!-- 通用提示框 -->
+  <div id="tips-box" class="tips-box">提示信息</div>
+
+  <!-- 引入脚本 -->
+  <script src="./js/socket.js"></script>
+  <script src="./js/ui.js"></script>
+  <script src="./js/gameEvent.js"></script>
+  <script src="./js/chat.js"></script>
+  <script>
+    // 游戏页初始化
+    document.addEventListener('DOMContentLoaded', function() {
+      // 1. 获取URL参数（房间号、玩家ID）
+      const urlParams = new URLSearchParams(window.location.search);
+      const roomId = urlParams.get('roomId');
+      const playerId = urlParams.get('playerId');
+      if (!roomId || !playerId) {
+        showTips('参数错误，请返回房间页');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 2000);
+        return;
+      }
+
+      // 2. 初始化Socket（告知后端进入游戏房间）
+      socket.emit('enterGame', { roomId, playerId });
+
+      // 3. 初始化3D场景（王五的代码会替换这里）
+      initThreeScene();
+
+      // 4. 绑定游戏操作事件（gameEvent.js）
+      bindGameEvents(roomId, playerId);
+
+      // 5. 绑定聊天事件（chat.js）
+      bindChatEvents(roomId, playerId);
+
+      // 6. 监听后端推送的核心数据（张三）
+      // 6.1 玩家信息更新
+      socket.on('playerInfoUpdate', function(playerList) {
+        renderPlayerInfo(playerList); // 渲染玩家信息
+      });
+      // 6.2 回合更新
+      socket.on('roundUpdate', function(round) {
+        document.getElementById('current-round').textContent = round;
+      });
+      // 6.3 翻牌日志推送
+      socket.on('flipCardLog', function(log) {
+        addLogItem(log); // 添加翻牌日志
+        // 触发3D翻牌动画（对接王五）
+        document.getElementById('three-scene').dispatchEvent(
+          new CustomEvent('3d-flip', { detail: { cardId: log.cardId, type: log.cardType } })
+        );
+      });
+      // 6.4 动画状态通知（禁用/启用按钮）
+      socket.on('animateStatus', function(status) {
+        const flipBtn = document.getElementById('flip-card');
+        const continueBtn = document.getElementById('continue-btn');
+        const leaveBtn = document.getElementById('leave-btn');
+        if (status === 'start') {
+          // 动画开始，禁用按钮
+          flipBtn.disabled = true;
+          continueBtn.disabled = true;
+          leaveBtn.disabled = true;
+          showTips('3D动画播放中...');
+        } else if (status === 'end') {
+          // 动画结束，启用按钮
+          flipBtn.disabled = false;
+          continueBtn.disabled = false;
+          leaveBtn.disabled = false;
+          showTips('动画结束，可操作');
+        }
+      });
+    });
+
+    // 初始化3D场景（王五的核心代码位置）
+    function initThreeScene() {
+      const container = document.getElementById('three-scene');
+      // 王五的Three.js代码会写在这里，比如：
+      // 1. 创建场景、相机、渲染器
+      // 2. 加载卡牌/神庙/米宝模型
+      // 3. 监听前端触发的3d-flip事件，实现翻牌动画
+      // 临时提示：王五的3D代码将在这里初始化
+      container.innerHTML = '<div style="color:#fff; text-align:center; line-height:600px;">3D场景初始化中...</div>';
+      
+      // 监听前端触发的3D翻牌事件（王五需要监听这个事件）
+      container.addEventListener('3d-flip', function(e) {
+        console.log('前端触发3D翻牌', e.detail);
+        // 王五的翻牌动画代码写在这里
+      });
+    }
+  </script>
+</body>
+</html>
